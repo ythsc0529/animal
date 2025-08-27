@@ -178,13 +178,9 @@ function handleSpreadSelection(spreadType) {
         selectedSpread.positions = Array.from({ length: cardCount }, (_, i) => `第 ${i + 1} 張牌`);
 
     } else if (spreadType === 'auto') {
-        if (userQuestion.length < 10) {
-           selectedSpread = spreadDetails['single'];
-        } else if (userQuestion.length < 25) {
-           selectedSpread = spreadDetails['three-card'];
-        } else {
-           selectedSpread = spreadDetails['cross'];
-        }
+        // 真正根據問題內容選擇最適合的牌陣
+        const autoChoice = chooseSpreadAutomatically(userQuestion);
+        selectedSpread = spreadDetails[autoChoice];
         cardCount = selectedSpread.count;
     } else {
         cardCount = selectedSpread.count;
@@ -296,6 +292,56 @@ async function getAIInterpretation(spread) {
         loader.style.display = 'none';
         resetBtn.style.display = 'block';
     }
+}
+
+/**
+ * 根據使用者問題內容判斷最合適的牌陣（回傳 spreadDetails 的 key）
+ * 邏輯：
+ * - 含有感情／對方相關關鍵字 -> relationship (關係牌陣)
+ * - 明確為是/否／單一選擇疑問 -> single (單牌)
+ * - 明確提到過去/現在/未來 -> three-card (三張牌)
+ * - 涉及決策、阻礙、方向、工作/財務等較複雜議題 -> cross (十字牌法)
+ * - 否則退回長度判斷作為備援
+ */
+function chooseSpreadAutomatically(question) {
+    if (!question || question.trim().length === 0) return 'single';
+
+    const q = question.toLowerCase();
+
+    const relationshipKeywords = ['感情','戀愛','喜歡','對方','分手','曖昧','交往','伴侶','愛情','婚','追','愛','男友','男朋友','女友','女朋友','結婚','約會','關係','在一起'];
+    const timeKeywords = ['過去','現在','未來','將來','未來會'];
+    const decisionKeywords = ['選擇','決定','應該','要不要','是否','該不該','是不是','如何走','方向','阻礙','障礙','困難','改善'];
+    const workMoneyKeywords = ['工作','事業','職場','升遷','面試','收入','薪','錢','投資','財務','財運'];
+    const yesNoPatterns = ['是否','要不要','會不會','能不能','能否','有沒有'];
+
+    // 檢查關鍵字出現次數（簡單 heuristic）
+    function containsAny(list) {
+        return list.some(k => q.indexOf(k) !== -1);
+    }
+
+    if (containsAny(relationshipKeywords)) {
+        return 'relationship';
+    }
+
+    if (containsAny(yesNoPatterns)) {
+        // 若同時出現時間字或決策字則視情況選 cross 或 three-card
+        if (containsAny(timeKeywords)) return 'three-card';
+        return 'single';
+    }
+
+    if (containsAny(timeKeywords)) {
+        return 'three-card';
+    }
+
+    if (containsAny(decisionKeywords) || containsAny(workMoneyKeywords)) {
+        return 'cross';
+    }
+
+    // 備援：根據字數選擇（原本邏輯）
+    const len = question.trim().length;
+    if (len < 10) return 'single';
+    if (len < 25) return 'three-card';
+    return 'cross';
 }
 
 // =================================================================
