@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>靈獸牌線上占卜</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <div id="welcome-screen" class="screen active">
+            <h1 class="title">靈獸牌占卜</h1>
+            <p class="subtitle">靜下心來，專注於你的問題</p>
+            <textarea id="user-question" rows="3" placeholder="請在此輸入您想問的問題..."></textarea>
+            <button id="submit-question-btn">提出問題</button>
+        </div>
+
+        <div id="spread-selection-screen" class="screen">
+            <h2>請選擇一個牌陣</h2>
+            <div class="spread-options">
+                <button class="spread-btn" data-spread="single">單牌占卜 (1張)</button>
+                <button class="spread-btn" data-spread="three-card">三張牌法 (過去/現在/未來)</button>
+                <button class="spread-btn" data-spread="cross">十字牌法 (5張)</button>
+                <button class="spread-btn" data-spread="relationship">關係牌陣 (6張)</button>
+                <div class="free-draw-option">
+                    <button class="spread-btn" data-spread="free">自由抽牌</button>
+                    <input type="number" id="free-draw-count" min="1" max="10" value="3">
+                    <span>張</span>
+                </div>
+                 <button class="spread-btn" data-spread="auto">🔮 自動選擇</button>
+            </div>
+        </div>
+
+        <div id="divination-screen" class="screen">
+            <h2 id="question-display"></h2>
+            <div id="card-display-area">
+                </div>
+             <div id="interpretation-area" style="display: none;">
+                <div class="loader-container">
+                    <div class="loader"></div>
+                    <p>靈獸正在聆聽您的問題，並透過 Gemini AI 尋找答案...</p>
+                </div>
+                <div id="ai-interpretation"></div>
+                <button id="reset-btn" style="display: none;">重新占卜</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
