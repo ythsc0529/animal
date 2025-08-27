@@ -15,15 +15,7 @@ const resetBtn = document.getElementById('reset-btn');
 const questionDisplay = document.getElementById('question-display');
 
 // =================================================================
-// Gemini API 金鑰 (請替換成您的金鑰)
-// =================================================================
-// 警告：直接將 API 金鑰暴露在前端是不安全的。
-// 在 Netlify 部署時，建議使用 Serverless Functions 來隱藏金鑰。
-// 但根據您的要求，這裡先使用佔位符，方便您直接上傳。
-const GEMINI_API_KEY = "GEMINI_API_KEY"; 
-
-// =================================================================
-// 卡牌數據
+// 卡牌數據 (這部分不變)
 // =================================================================
 const cardDeck = [
     // A. 情感組
@@ -99,13 +91,13 @@ const spreadDetails = {
 
 
 // =================================================================
-// 應用程式狀態
+// 應用程式狀態 (這部分不變)
 // =================================================================
 let userQuestion = '';
 let drawnCards = [];
 
 // =================================================================
-// 事件監聽
+// 事件監聽 (這部分不變)
 // =================================================================
 submitQuestionBtn.addEventListener('click', () => {
     userQuestion = userQuestionInput.value.trim();
@@ -136,29 +128,19 @@ resetBtn.addEventListener('click', () => {
 });
 
 // =================================================================
-// 核心功能函式
+// 核心功能函式 (除了 getAIInterpretation，其他不變)
 // =================================================================
 
-/**
- * 切換顯示的畫面
- * @param {HTMLElement} screenToShow - 要顯示的畫面元素
- * @param {boolean} isReset - 是否為重置操作
- */
 function switchScreen(screenToShow, isReset = false) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
     if (isReset) {
-      // 如果是重置，需要確保占卜畫面也隱藏
       divinationScreen.classList.remove('active');
     }
     screenToShow.classList.add('active');
 }
 
-/**
- * 處理牌陣選擇
- * @param {string} spreadType - 選擇的牌陣類型
- */
 function handleSpreadSelection(spreadType) {
     let cardCount;
     let selectedSpread = spreadDetails[spreadType];
@@ -170,11 +152,9 @@ function handleSpreadSelection(spreadType) {
             return;
         }
         selectedSpread.count = cardCount;
-        // 為自由抽牌生成位置名稱
         selectedSpread.positions = Array.from({ length: cardCount }, (_, i) => `第 ${i + 1} 張牌`);
 
     } else if (spreadType === 'auto') {
-        // 根據問題長度自動選擇牌陣 (簡易版邏輯)
         if (userQuestion.length < 10) {
            selectedSpread = spreadDetails['single'];
         } else if (userQuestion.length < 25) {
@@ -190,19 +170,12 @@ function handleSpreadSelection(spreadType) {
     switchScreen(divinationScreen);
     questionDisplay.textContent = `問題：「${userQuestion}」`;
     
-    // 抽牌並顯示
     drawAndDisplayCards(selectedSpread);
 }
 
-/**
- * 抽牌、賦予正逆位並顯示卡牌
- * @param {object} spread - 包含牌陣資訊的物件
- */
 function drawAndDisplayCards(spread) {
-    // 洗牌
     const shuffledDeck = [...cardDeck].sort(() => 0.5 - Math.random());
     
-    // 抽牌
     drawnCards = shuffledDeck.slice(0, spread.count).map((card, index) => {
         const isReversed = Math.random() < 0.5;
         return {
@@ -212,18 +185,12 @@ function drawAndDisplayCards(spread) {
         };
     });
 
-    // 清空舊卡牌並顯示新卡牌
     cardDisplayArea.innerHTML = '';
     displayCards(drawnCards);
 
-    // 獲取 AI 解讀
     getAIInterpretation(spread);
 }
 
-/**
- * 將抽出的卡牌以動畫效果顯示在畫面上
- * @param {Array<object>} cards - 包含抽出卡牌資訊的陣列
- */
 function displayCards(cards) {
     cards.forEach((card, index) => {
         const cardContainer = document.createElement('div');
@@ -245,7 +212,6 @@ function displayCards(cards) {
         cardContainer.appendChild(cardEl);
         cardDisplayArea.appendChild(cardContainer);
 
-        // 延遲觸發翻牌動畫
         setTimeout(() => {
             if (card.orientation === '逆位') {
                 cardEl.classList.add('reversed-draw');
@@ -256,9 +222,12 @@ function displayCards(cards) {
     });
 }
 
+// =================================================================
+// 呼叫 AI 的函式 (已修改)
+// =================================================================
 
 /**
- * 構建 Prompt 並呼叫 Gemini AI 進行解讀
+ * 構建 Prompt 並呼叫後端 Netlify Function 進行解讀
  * @param {object} spread - 選擇的牌陣資訊
  */
 async function getAIInterpretation(spread) {
@@ -267,63 +236,49 @@ async function getAIInterpretation(spread) {
     aiInterpretation.innerHTML = '';
     resetBtn.style.display = 'none';
 
-    // 準備 Prompt
+    // 準備 Prompt 的部分不變
     const prompt = buildPrompt(spread);
     
-    if (GEMINI_API_KEY === "GEMINI_API_KEY") {
-         aiInterpretation.innerHTML = `
-            <h2>錯誤：尚未設定 Gemini API 金鑰</h2>
-            <p>請在 <code>script.js</code> 檔案中找到 <code>GEMINI_API_KEY</code> 變數，並將其值替換成您自己的 API 金鑰。</p>
-            <p>為了安全，部署到 Netlify 時，建議使用環境變數來管理您的金鑰。</p>
-        `;
-        loader.style.display = 'none';
-        resetBtn.style.display = 'block';
-        return;
-    }
-
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
+        // API 呼叫已修改，指向我們自己的 Netlify Function
+        const response = await fetch(`/.netlify/functions/get-interpretation`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                "contents": [{
-                    "parts": [{ "text": prompt }]
-                }],
-                "generationConfig": {
-                    "temperature": 0.7,
-                    "topK": 40,
-                    "topP": 0.95,
-                }
-            })
+            // 現在只需要傳送 prompt
+            body: JSON.stringify({ prompt: prompt })
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(`API 請求失敗: ${errorData.error.message}`);
+            throw new Error(errorData.error || '請求失敗，無法連接到解讀服務。');
         }
 
         const data = await response.json();
+        
+        // 增加一個健壯性檢查，確保收到的回覆格式正確
+        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content.parts[0].text) {
+            throw new Error('從 AI 收到的回覆格式無效，請稍後再試。');
+        }
+        
         const interpretationText = data.candidates[0].content.parts[0].text;
         
-        // 模擬打字機效果顯示結果
         typewriterEffect(interpretationText, aiInterpretation);
 
     } catch (error) {
         console.error("AI 解讀時發生錯誤:", error);
-        aiInterpretation.textContent = `抱歉，解讀時發生錯誤：\n${error.message}\n\n請檢查您的 API 金鑰是否正確，或稍後再試。`;
+        aiInterpretation.textContent = `抱歉，解讀時發生錯誤：\n${error.message}`;
     } finally {
         loader.style.display = 'none';
         resetBtn.style.display = 'block';
     }
 }
 
-/**
- * 建立傳送給 AI 的完整 Prompt
- * @param {object} spread - 選擇的牌陣資訊
- * @returns {string} - 組合好的 Prompt 字串
- */
+// =================================================================
+// 輔助函式 (這部分不變)
+// =================================================================
+
 function buildPrompt(spread) {
     let cardInfo = drawnCards.map(card => 
         `- 牌位「${card.position}」: **${card.name} (${card.orientation})**\n  - 基本牌義: ${card.orientation === '正位' ? card.upright : card.reversed}`
@@ -358,23 +313,16 @@ function buildPrompt(spread) {
     `;
 }
 
-/**
- * 打字機效果
- * @param {string} text - 要顯示的文字
- * @param {HTMLElement} element - 顯示文字的 HTML 元素
- */
 function typewriterEffect(text, element) {
     element.innerHTML = "";
     let i = 0;
     function type() {
         if (i < text.length) {
-            // 替換換行符為 <br>，並處理 Markdown 的粗體 **
             let char = text.charAt(i);
             if (text.substring(i, i + 2) === '\n') {
                 element.innerHTML += '<br>';
                 i++;
             } else if (text.substring(i, i + 2) === '**') {
-                // 簡單處理粗體
                 let end = text.indexOf('**', i + 2);
                 if (end !== -1) {
                     element.innerHTML += `<strong>${text.substring(i + 2, end)}</strong>`;
