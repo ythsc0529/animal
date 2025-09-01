@@ -244,3 +244,21 @@ input[type="number"] {
     margin: 0 auto 20px auto;
     border: 1px solid var(--card-border-color);
 }
+
+/* 歷史詳細區塊動畫效果 */
+.detail-panel {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.35s ease, opacity 0.35s ease;
+}
+.detail-panel.open {
+    opacity: 1;
+    /* max-height 由 JS 動態設定為內容高度，這裡放一個上限值保險 */
+    max-height: 800px;
+}
+
+/* 歷史內的卡牌縮圖樣式（簡潔） */
+.detail-panel div[style*="min-width:140px"] {
+    border: 1px solid rgba(123,104,238,0.12);
+}

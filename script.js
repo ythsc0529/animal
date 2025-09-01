@@ -118,9 +118,10 @@ const spreadDetails = {
 // =================================================================
 let userQuestion = '';
 let drawnCards = [];
+let currentHistoryId = null; // 新增：紀錄目前正在占卜的歷史 id
 
 // =================================================================
-// 事件監聽 (這部分不變)
+// 事件監聽 (新增相關按鈕事件)
 // =================================================================
 submitQuestionBtn.addEventListener('click', () => {
     userQuestion = userQuestionInput.value.trim();
@@ -128,6 +129,8 @@ submitQuestionBtn.addEventListener('click', () => {
         alert('請先輸入您的問題！');
         return;
     }
+    // 改為建立一筆 pending 紀錄，稍後在 AI 回覆後補上詳細內容
+    currentHistoryId = createPendingHistoryEntry(userQuestion);
     switchScreen(spreadSelectionScreen);
 });
 
@@ -148,6 +151,43 @@ resetBtn.addEventListener('click', () => {
     interpretationArea.style.display = 'none';
     resetBtn.style.display = 'none';
     switchScreen(welcomeScreen, true);
+});
+
+// 新增：檢視詢問紀錄按鈕
+const viewHistoryBtn = document.getElementById('view-history-btn');
+const historyContainer = document.getElementById('history-container');
+const historyList = document.getElementById('history-list');
+const clearHistoryBtn = document.getElementById('clear-history-btn');
+const closeHistoryBtn = document.getElementById('close-history-btn');
+
+viewHistoryBtn.addEventListener('click', () => {
+    showHistory();
+});
+
+// 清除紀錄
+clearHistoryBtn.addEventListener('click', () => {
+    if (!confirm('確定要清除所有詢問紀錄？')) return;
+    localStorage.removeItem('divinationHistory');
+    showHistory();
+});
+
+// 關閉歷史視窗
+closeHistoryBtn.addEventListener('click', () => {
+    historyContainer.style.display = 'none';
+});
+
+// 新增：每日運勢按鈕與容器
+const dailyHoroscopeBtn = document.getElementById('daily-horoscope-btn');
+const dailyHoroscopeContainer = document.getElementById('daily-horoscope-container');
+const dailyHoroscopeContent = document.getElementById('daily-horoscope-content');
+const closeHoroscopeBtn = document.getElementById('close-horoscope-btn');
+
+dailyHoroscopeBtn.addEventListener('click', () => {
+    showDailyHoroscope();
+});
+
+closeHoroscopeBtn.addEventListener('click', () => {
+    dailyHoroscopeContainer.style.display = 'none';
 });
 
 // =================================================================
@@ -255,17 +295,12 @@ async function getAIInterpretation(spread) {
     aiInterpretation.innerHTML = '';
     resetBtn.style.display = 'none';
 
-    // 準備 Prompt 的部分不變
     const prompt = buildPrompt(spread);
     
     try {
-        // API 呼叫已修改，指向我們自己的 Netlify Function
         const response = await fetch(`/.netlify/functions/get-interpretation`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            // 現在只需要傳送 prompt
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: prompt })
         });
 
@@ -276,7 +311,6 @@ async function getAIInterpretation(spread) {
 
         const data = await response.json();
         
-        // 增加一個健壯性檢查，確保收到的回覆格式正確
         if (!data.candidates || !data.candidates[0] || !data.candidates[0].content.parts[0].text) {
             throw new Error('從 AI 收到的回覆格式無效，請稍後再試。');
         }
@@ -285,9 +319,33 @@ async function getAIInterpretation(spread) {
         
         typewriterEffect(interpretationText, aiInterpretation);
 
+        // 將 AI 回覆與當次抽牌結果寫回歷史（若有 currentHistoryId）
+        if (currentHistoryId) {
+            finalizeHistoryEntry(currentHistoryId, {
+                spread: spread.name,
+                positions: spread.positions,
+                cards: drawnCards,
+                aiText: interpretationText
+            });
+            // 更新歷史顯示（如果歷史視窗開著）
+            if (historyContainer.style.display === 'block') showHistory();
+            currentHistoryId = null;
+        }
+
     } catch (error) {
         console.error("AI 解讀時發生錯誤:", error);
         aiInterpretation.textContent = `抱歉，解讀時發生錯誤：\n${error.message}`;
+
+        // 若失敗也更新歷史為 done 並記錄錯誤訊息
+        if (currentHistoryId) {
+            finalizeHistoryEntry(currentHistoryId, {
+                spread: spread.name,
+                positions: spread.positions,
+                cards: drawnCards,
+                aiText: `解讀失敗：${error.message}`
+            });
+            currentHistoryId = null;
+        }
     } finally {
         loader.style.display = 'none';
         resetBtn.style.display = 'block';
@@ -408,4 +466,302 @@ function typewriterEffect(text, element) {
         }
     }
     type();
+}
+
+// =================================================================
+// 新增：詢問紀錄功能（localStorage）
+// =================================================================
+function createPendingHistoryEntry(question) {
+    try {
+        const key = 'divinationHistory';
+        const raw = localStorage.getItem(key);
+        const arr = raw ? JSON.parse(raw) : [];
+        const entry = {
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            question: question,
+            time: new Date().toISOString(),
+            status: 'pending', // pending / done
+            spread: null,
+            cards: null,
+            aiText: null,
+            completedAt: null
+        };
+        arr.unshift(entry);
+        if (arr.length > 100) arr.length = 100;
+        localStorage.setItem(key, JSON.stringify(arr));
+        return entry.id;
+    } catch (e) {
+        console.error('建立歷史紀錄失敗', e);
+        return null;
+    }
+}
+
+function finalizeHistoryEntry(id, payload = {}) {
+    try {
+        const key = 'divinationHistory';
+        const raw = localStorage.getItem(key);
+        const arr = raw ? JSON.parse(raw) : [];
+        const idx = arr.findIndex(a => a.id === id);
+        if (idx === -1) return;
+        const entry = arr[idx];
+        entry.status = 'done';
+        if (payload.spread) entry.spread = payload.spread;
+        if (payload.positions) entry.positions = payload.positions;
+        if (payload.cards) entry.cards = payload.cards;
+        if (payload.aiText) entry.aiText = payload.aiText;
+        entry.completedAt = new Date().toISOString();
+        arr[idx] = entry;
+        localStorage.setItem(key, JSON.stringify(arr));
+    } catch (e) {
+        console.error('更新歷史紀錄失敗', e);
+    }
+}
+
+// 修改原有的 saveQuestionToHistory 保持相容（仍然可被其他地方呼叫），並回傳 id
+function saveQuestionToHistory(question) {
+    try {
+        const key = 'divinationHistory';
+        const raw = localStorage.getItem(key);
+        const arr = raw ? JSON.parse(raw) : [];
+        const entry = {
+            id: Date.now(),
+            question: question,
+            time: new Date().toISOString()
+        };
+        arr.unshift(entry); // 最新放前面
+        if (arr.length > 100) arr.length = 100;
+        localStorage.setItem(key, JSON.stringify(arr));
+        return entry.id;
+    } catch (e) {
+        console.error('儲存詢問紀錄失敗', e);
+        return null;
+    }
+}
+
+// =================================================================
+// 顯示歷史：加入「詳細」按鈕與展開動畫處理
+// =================================================================
+function showHistory() {
+    const key = 'divinationHistory';
+    const raw = localStorage.getItem(key);
+    const arr = raw ? JSON.parse(raw) : [];
+    historyList.innerHTML = '';
+    if (arr.length === 0) {
+        historyList.innerHTML = '<p>目前沒有詢問紀錄。</p>';
+    } else {
+        const ul = document.createElement('ul');
+        ul.style.listStyle = 'none';
+        ul.style.padding = '0';
+        ul.style.margin = '0';
+        arr.forEach(item => {
+            const li = document.createElement('li');
+            li.style.padding = '8px';
+            li.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+
+            // 簡短顯示區與按鈕（包含詳細按鈕）
+            li.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                <div style="flex:1;">
+                    <div style="font-weight:600;">${escapeHtml(item.question)}</div>
+                    <div style="font-size:0.85em;opacity:0.8;">${new Date(item.time).toLocaleString()} ${item.status === 'pending' ? '（等待中）' : ''}</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button data-id="${item.id}" class="reuse-question-btn" style="background:#7b68ee;">再次使用</button>
+                    <button data-id="${item.id}" class="toggle-detail-btn" style="background:#29b6f6;">詳細</button>
+                    <button data-id="${item.id}" class="delete-history-btn" style="background:#d32f2f;">刪除</button>
+                </div>
+            </div>
+            <div class="detail-panel" id="detail-${item.id}" style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(0,0,0,0.12);">
+                ${renderDetailContent(item)}
+            </div>`;
+
+            ul.appendChild(li);
+        });
+        historyList.appendChild(ul);
+
+        // 綁定再次使用和刪除
+        historyList.querySelectorAll('.reuse-question-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = Number(e.target.dataset.id);
+                const entry = arr.find(a => a.id === id);
+                if (entry) {
+                    userQuestionInput.value = entry.question;
+                    userQuestion = entry.question;
+                    historyContainer.style.display = 'none';
+                    switchScreen(spreadSelectionScreen);
+                }
+            });
+        });
+        historyList.querySelectorAll('.delete-history-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = Number(e.target.dataset.id);
+                const newArr = arr.filter(a => a.id !== id);
+                localStorage.setItem(key, JSON.stringify(newArr));
+                showHistory();
+            });
+        });
+
+        // 綁定詳細按鈕（切換展開 / 收合）
+        historyList.querySelectorAll('.toggle-detail-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = Number(e.target.dataset.id);
+                const panel = document.getElementById(`detail-${id}`);
+                if (!panel) return;
+                const open = panel.classList.toggle('open');
+                if (open) {
+                    // 動態設定 maxHeight 以觸發動畫（smooth expand）
+                    panel.style.maxHeight = panel.scrollHeight + 'px';
+                } else {
+                    panel.style.maxHeight = '0';
+                }
+            });
+        });
+    }
+    historyContainer.style.display = 'block';
+}
+
+function renderDetailContent(item) {
+    // 如果還沒完成，顯示等待訊息
+    if (!item || item.status === 'pending') {
+        return `<div style="padding:10px;color:rgba(255,255,255,0.8);">等待 AI 解讀完成，稍後會顯示詳情。</div>`;
+    }
+    // 已有詳情：顯示牌陣、牌位、卡牌與 AI 回覆（簡單格式化）
+    let html = `<div style="font-weight:700;margin-bottom:8px;">牌陣：${escapeHtml(item.spread || '')}</div>`;
+    if (item.cards && Array.isArray(item.cards)) {
+        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">`;
+        item.cards.forEach(c => {
+            html += `<div style="min-width:140px;padding:8px;border-radius:6px;background:rgba(0,0,0,0.06);">
+                <div style="font-weight:700;">${escapeHtml(c.name)}</div>
+                <div style="font-size:0.9em;color:var(--accent-color);">${escapeHtml(c.orientation)}</div>
+                <div style="font-size:0.85em;opacity:0.9;">${escapeHtml(c.position || '')}</div>
+                <div style="margin-top:6px;font-size:0.85em;">${escapeHtml(c.orientation === '正位' ? (c.upright || '') : (c.reversed || ''))}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+    if (item.aiText) {
+        // 將 AI 文字放入可展開的 pre 區塊
+        html += `<div style="white-space:pre-wrap;text-align:left;padding:10px;border-radius:6px;background:rgba(0,0,0,0.04);max-height:400px;overflow:auto;">${escapeHtml(item.aiText)}</div>`;
+    }
+    return html;
+}
+
+// =================================================================
+// 新增：每日運勢功能（每天重置，使用 localStorage 快取）
+// =================================================================
+function showDailyHoroscope() {
+    const todayKey = getTodayKey();
+    const storageKey = `dailyHoroscope_${todayKey}`;
+    let data = null;
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+            data = JSON.parse(raw);
+        } else {
+            data = generateDailyHoroscope(todayKey);
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        }
+    } catch (e) {
+        console.error('讀取/產生每日運勢錯誤', e);
+        data = generateDailyHoroscope(todayKey);
+    }
+    renderDailyHoroscope(data);
+    dailyHoroscopeContainer.style.display = 'block';
+}
+
+function getTodayKey() {
+    const d = new Date();
+    // 使用 YYYY-MM-DD 作為 key，確保每天不同
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+// 產生 deterministic 的每日運勢（同一天結果相同）
+function generateDailyHoroscope(seedStr) {
+    // categories 可以擴增
+    const categories = ['愛情', '財運', '事業/學業', '健康', '人際'];
+    // 建立 seeded random
+    const rnd = mulberry32(hashCode(seedStr + '_靈獸牌'));
+    const scores = {};
+    let total = 0;
+    categories.forEach(cat => {
+        // 分數 30 ~ 95
+        const s = Math.floor(30 + Math.floor(rnd() * 66));
+        scores[cat] = s;
+        total += s;
+    });
+    const overall = Math.round(total / categories.length);
+    // 產生每個分類的簡短建議
+    const details = categories.map(cat => {
+        return {
+            category: cat,
+            score: scores[cat],
+            short: scoreToAdvice(scores[cat], cat)
+        };
+    });
+
+    return {
+        date: seedStr,
+        overall,
+        details,
+        generatedAt: new Date().toISOString()
+    };
+}
+
+// 簡單 hash 與 seeded PRNG（輕量）
+function hashCode(str) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+function mulberry32(a) {
+    return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+}
+
+function scoreToAdvice(score, category) {
+    if (score >= 85) return `非常好，${category}方面有明顯的正向能量，建議把握時機並主動出擊。`;
+    if (score >= 70) return `不錯，${category}方面較為順利，維持現在的步調，適度努力可見成效。`;
+    if (score >= 50) return `普通，${category}方面有起伏，注意細節並避免冒進。`;
+    if (score >= 35) return `偏弱，${category}方面可能遇到阻礙，建議保持耐心並尋求支援。`;
+    return `較差，${category}方面需要多留心與調整，建議先專注基礎且避免風險行為。`;
+}
+
+function renderDailyHoroscope(data) {
+    let html = `<div style="font-weight:700;font-size:1.1em;margin-bottom:8px;">日期：${data.date}　整體運勢：${data.overall}/100</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+    data.details.forEach(d => {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:6px;background:rgba(0,0,0,0.08);">
+            <div style="font-weight:600;">${d.category}</div>
+            <div style="text-align:right;">
+                <div style="font-weight:700;color:${scoreColor(d.score)}">${d.score}/100</div>
+                <div style="font-size:0.9em;opacity:0.9;margin-top:4px;">${d.short}</div>
+            </div>
+        </div>`;
+    });
+    html += `</div>`;
+    dailyHoroscopeContent.innerHTML = html;
+}
+
+function scoreColor(score) {
+    if (score >= 85) return '#4caf50';
+    if (score >= 70) return '#8bc34a';
+    if (score >= 50) return '#ffb300';
+    if (score >= 35) return '#ff7043';
+    return '#d32f2f';
+}
+
+// 防 XSS 簡單處理
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (s) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s];
+    });
 }

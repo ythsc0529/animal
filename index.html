@@ -16,7 +16,30 @@
             <h1 class="title">靈獸牌占卜</h1>
             <p class="subtitle">靜下心來，專注於你的問題</p>
             <textarea id="user-question" rows="3" placeholder="請在此輸入您想問的問題..."></textarea>
-            <button id="submit-question-btn">提出問題</button>
+            <div style="display:flex;gap:10px;justify-content:center;align-items:center;">
+                <button id="submit-question-btn">提出問題</button>
+                <button id="view-history-btn" style="background:linear-gradient(45deg,#4caf50,#8bc34a);">查看詢問紀錄</button>
+                <button id="daily-horoscope-btn" style="background:linear-gradient(45deg,#ffb74d,#ff8a65);">今日運勢</button>
+            </div>
+
+            <!-- 詢問紀錄區（預設隱藏） -->
+            <div id="history-container" style="display:none;margin-top:20px;max-width:800px;margin-left:auto;margin-right:auto;text-align:left;">
+                <h3>詢問紀錄</h3>
+                <div id="history-list" style="max-height:220px;overflow:auto;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.15);"></div>
+                <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end;">
+                    <button id="clear-history-btn" style="background:#d32f2f;">清除紀錄</button>
+                    <button id="close-history-btn" style="background:#607d8b;">關閉</button>
+                </div>
+            </div>
+
+            <!-- 每日運勢區（預設隱藏） -->
+            <div id="daily-horoscope-container" style="display:none;margin-top:20px;max-width:800px;margin-left:auto;margin-right:auto;text-align:left;">
+                <h3>今日運勢</h3>
+                <div id="daily-horoscope-content" style="padding:15px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.12);"></div>
+                <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end;">
+                    <button id="close-horoscope-btn" style="background:#607d8b;">關閉</button>
+                </div>
+            </div>
         </div>
 
         <div id="spread-selection-screen" class="screen">
