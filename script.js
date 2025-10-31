@@ -13,6 +13,9 @@ const aiInterpretation = document.getElementById('ai-interpretation');
 const loader = document.querySelector('.loader-container');
 const resetBtn = document.getElementById('reset-btn');
 const questionDisplay = document.getElementById('question-display');
+const selectionInstructions = document.getElementById('selection-instructions');
+const autoPickBtn = document.getElementById('auto-pick-btn');
+const confirmSelectionBtn = document.getElementById('confirm-selection-btn');
 
 // =================================================================
 // 卡牌數據 (這部分不變)
@@ -119,6 +122,10 @@ const spreadDetails = {
 let userQuestion = '';
 let drawnCards = [];
 let currentHistoryId = null; // 新增：紀錄目前正在占卜的歷史 id
+let currentSpread = null;
+let selectableDeck = [];
+let selectedIndexes = new Set();
+let requiredPickCount = 0;
 
 // =================================================================
 // 事件監聽 (新增相關按鈕事件)
@@ -140,6 +147,25 @@ spreadOptions.addEventListener('click', (e) => {
         handleSpreadSelection(spreadType);
     }
 });
+
+// 自動抽牌按鈕（在互動選牌階段）
+if (autoPickBtn) {
+    autoPickBtn.addEventListener('click', () => {
+        if (!currentSpread) return;
+        autoPickCards();
+    });
+}
+
+if (confirmSelectionBtn) {
+    confirmSelectionBtn.addEventListener('click', () => {
+        if (!currentSpread) return;
+        if (selectedIndexes.size !== requiredPickCount) {
+            alert(`請選擇 ${requiredPickCount} 張牌，目前已選 ${selectedIndexes.size} 張。`);
+            return;
+        }
+        finalizeSelectionAndReveal();
+    });
+}
 
 resetBtn.addEventListener('click', () => {
     // 重置所有狀態並回到歡迎畫面
@@ -228,8 +254,10 @@ function handleSpreadSelection(spreadType) {
 
     switchScreen(divinationScreen);
     questionDisplay.textContent = `問題：「${userQuestion}」`;
-    
-    drawAndDisplayCards(selectedSpread);
+    // 初始化互動選牌流程
+    currentSpread = selectedSpread;
+    requiredPickCount = selectedSpread.count || 3;
+    prepareSelectionDeck();
 }
 
 function drawAndDisplayCards(spread) {
@@ -248,6 +276,158 @@ function drawAndDisplayCards(spread) {
     displayCards(drawnCards);
 
     getAIInterpretation(spread);
+}
+
+// 準備互動選牌用的整副牌（背朝上）
+function prepareSelectionDeck() {
+    // shuffle full deck
+    selectableDeck = [...cardDeck].map((c, i) => ({ ...c, _idx: i })).sort(() => 0.5 - Math.random());
+    selectedIndexes = new Set();
+    cardDisplayArea.innerHTML = '';
+    interpretationArea.style.display = 'none';
+    resetBtn.style.display = 'none';
+    updateSelectionInstructions();
+
+    // render all cards as backs
+    selectableDeck.forEach((card, i) => {
+        const cardContainer = document.createElement('div');
+        cardContainer.className = 'card-container';
+        cardContainer.style.animationDelay = `${(i % 12) * 0.02}s`;
+        cardContainer.dataset.deckIndex = i;
+
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card';
+        cardEl.dataset.index = i;
+        cardEl.innerHTML = `
+            <div class="card-face card-back"></div>
+            <div class="card-face card-front">
+                <div class="card-name"></div>
+                <div class="card-orientation"></div>
+                <div class="card-position"></div>
+            </div>
+        `;
+
+        cardContainer.appendChild(cardEl);
+        cardDisplayArea.appendChild(cardContainer);
+
+        // 點擊選牌
+        cardEl.addEventListener('click', () => {
+            const idx = Number(cardEl.dataset.index);
+            toggleSelectIndex(idx, cardEl);
+        });
+    });
+}
+
+function updateSelectionInstructions() {
+    if (!selectionInstructions) return;
+    selectionInstructions.textContent = `請從牌面中選擇 ${requiredPickCount} 張牌。已選 ${selectedIndexes.size}/${requiredPickCount}`;
+}
+
+function toggleSelectIndex(idx, cardEl) {
+    if (selectedIndexes.has(idx)) {
+        selectedIndexes.delete(idx);
+        cardEl.style.outline = 'none';
+        cardEl.style.boxShadow = '';
+    } else {
+        if (selectedIndexes.size >= requiredPickCount) {
+            // 不允許超選
+            return;
+        }
+        selectedIndexes.add(idx);
+        cardEl.style.outline = '3px solid #ffeb3b';
+        cardEl.style.boxShadow = '0 6px 18px rgba(255,235,59,0.15)';
+    }
+    updateSelectionInstructions();
+}
+
+function autoPickCards() {
+    selectedIndexes.clear();
+    const total = selectableDeck.length;
+    const picks = new Set();
+    while (picks.size < requiredPickCount) {
+        const r = Math.floor(Math.random() * total);
+        picks.add(r);
+    }
+    picks.forEach(i => selectedIndexes.add(i));
+
+    // 更新 UI
+    cardDisplayArea.querySelectorAll('.card').forEach(cardEl => {
+        const idx = Number(cardEl.dataset.index);
+        if (selectedIndexes.has(idx)) {
+            cardEl.style.outline = '3px solid #ffeb3b';
+            cardEl.style.boxShadow = '0 6px 18px rgba(255,235,59,0.15)';
+        } else {
+            cardEl.style.outline = 'none';
+            cardEl.style.boxShadow = '';
+        }
+    });
+    updateSelectionInstructions();
+}
+
+function finalizeSelectionAndReveal() {
+    // Build drawnCards from selections in selected order (order arbitrary based on iteration)
+    const selArray = Array.from(selectedIndexes);
+    drawnCards = selArray.map((selIdx, i) => {
+        const card = selectableDeck[selIdx];
+        const isReversed = Math.random() < 0.5;
+        return {
+            ...card,
+            orientation: isReversed ? '逆位' : '正位',
+            position: currentSpread.positions[i] || `第 ${i + 1} 張`
+        };
+    });
+
+    // Reveal UI: flip selected cards and remove non-selected ones
+    const cardEls = cardDisplayArea.querySelectorAll('.card');
+    // compute stagger delays
+    const selList = Array.from(selectedIndexes);
+    cardEls.forEach(cardEl => {
+        const idx = Number(cardEl.dataset.index);
+        const container = cardEl.parentElement;
+        const front = cardEl.querySelector('.card-front');
+        if (selectedIndexes.has(idx)) {
+            const selPos = selList.indexOf(idx);
+            const c = drawnCards[selPos];
+            // 填入正位/逆位資訊
+            front.querySelector('.card-name').textContent = c.name;
+            front.querySelector('.card-orientation').textContent = c.orientation;
+            front.querySelector('.card-position').textContent = `(${c.position})`;
+            // flip with stagger
+            setTimeout(() => {
+                if (c.orientation === '逆位') {
+                    cardEl.classList.add('reversed-draw');
+                } else {
+                    cardEl.classList.add('flipped');
+                }
+            }, 200 + selPos * 250);
+        } else {
+            // fade out and remove non-selected cards
+            container.style.transition = 'opacity 350ms ease, transform 350ms ease';
+            container.style.opacity = '0';
+            container.style.transform = 'scale(0.6)';
+            setTimeout(() => {
+                if (container && container.parentElement) container.parentElement.removeChild(container);
+            }, 400);
+        }
+    });
+
+    // After reveal animations finish, compact the layout to only selected cards
+    const maxRevealDelay = 200 + (selList.length - 1) * 250;
+    const cleanupDelay = maxRevealDelay + 700;
+    setTimeout(() => {
+        // Re-append only selected containers in the selected order
+        const frag = document.createDocumentFragment();
+        selList.forEach(selIdx => {
+            const selContainer = cardDisplayArea.querySelector(`[data-deck-index='${selIdx}']`);
+            if (selContainer) frag.appendChild(selContainer);
+        });
+        cardDisplayArea.innerHTML = '';
+        cardDisplayArea.appendChild(frag);
+
+        // 顯示解讀區並呼叫 AI
+        interpretationArea.style.display = 'block';
+        getAIInterpretation(currentSpread);
+    }, cleanupDelay);
 }
 
 function displayCards(cards) {

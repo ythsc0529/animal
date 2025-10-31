@@ -60,8 +60,13 @@
 
         <div id="divination-screen" class="screen">
             <h2 id="question-display"></h2>
+            <div class="selection-toolbar" style="display:flex;gap:10px;justify-content:center;align-items:center;margin-top:10px;">
+                <div id="selection-instructions" style="color:var(--primary-color);opacity:0.9"></div>
+                <button id="auto-pick-btn" style="background:linear-gradient(45deg,#42a5f5,#7b68ee);">電腦自動選牌</button>
+                <button id="confirm-selection-btn" style="background:linear-gradient(45deg,#4caf50,#8bc34a);">確認選牌並揭示</button>
+            </div>
             <div id="card-display-area">
-                </div>
+            </div>
              <div id="interpretation-area" style="display: none;">
                 <div class="loader-container">
                     <div class="loader"></div>
