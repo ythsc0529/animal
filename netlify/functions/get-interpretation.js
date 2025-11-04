@@ -1,4 +1,4 @@
-// 檔案路徑: netlify/functions/get-interpretation.js
+// 為求方便，程式註解由AI生成，程式本體為我自行撰寫
 
 exports.handler = async function (event, context) {
     // 只允許 POST 請求

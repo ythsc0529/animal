@@ -1,3 +1,4 @@
+//為求方便，程式註解由AI生成，程式本體為我自行撰寫
 // =================================================================
 // DOM 元素獲取
 // =================================================================
@@ -18,7 +19,7 @@ const autoPickBtn = document.getElementById('auto-pick-btn');
 const confirmSelectionBtn = document.getElementById('confirm-selection-btn');
 
 // =================================================================
-// 卡牌數據 (這部分不變)
+// 卡牌數據 
 // =================================================================
 const cardDeck = [
     // A. 情感組
@@ -117,18 +118,18 @@ const spreadDetails = {
 
 
 // =================================================================
-// 應用程式狀態 (這部分不變)
+// 應用程式狀態
 // =================================================================
 let userQuestion = '';
 let drawnCards = [];
-let currentHistoryId = null; // 新增：紀錄目前正在占卜的歷史 id
+let currentHistoryId = null; // 紀錄目前正在占卜的歷史 id
 let currentSpread = null;
 let selectableDeck = [];
 let selectedIndexes = new Set();
 let requiredPickCount = 0;
 
 // =================================================================
-// 事件監聽 (新增相關按鈕事件)
+// 事件監聽 
 // =================================================================
 submitQuestionBtn.addEventListener('click', () => {
     userQuestion = userQuestionInput.value.trim();
@@ -136,7 +137,7 @@ submitQuestionBtn.addEventListener('click', () => {
         alert('請先輸入您的問題！');
         return;
     }
-    // 改為建立一筆 pending 紀錄，稍後在 AI 回覆後補上詳細內容
+    // 建立一筆 pending 紀錄，稍後在 AI 回覆後補上詳細內容
     currentHistoryId = createPendingHistoryEntry(userQuestion);
     switchScreen(spreadSelectionScreen);
 });
@@ -179,7 +180,7 @@ resetBtn.addEventListener('click', () => {
     switchScreen(welcomeScreen, true);
 });
 
-// 新增：檢視詢問紀錄按鈕
+// 檢視詢問紀錄按鈕
 const viewHistoryBtn = document.getElementById('view-history-btn');
 const historyContainer = document.getElementById('history-container');
 const historyList = document.getElementById('history-list');
@@ -202,7 +203,7 @@ closeHistoryBtn.addEventListener('click', () => {
     historyContainer.style.display = 'none';
 });
 
-// 新增：每日運勢按鈕與容器
+// 每日運勢按鈕與容器
 const dailyHoroscopeBtn = document.getElementById('daily-horoscope-btn');
 const dailyHoroscopeContainer = document.getElementById('daily-horoscope-container');
 const dailyHoroscopeContent = document.getElementById('daily-horoscope-content');
@@ -217,7 +218,7 @@ closeHoroscopeBtn.addEventListener('click', () => {
 });
 
 // =================================================================
-// 核心功能函式 (除了 getAIInterpretation，其他不變)
+// 核心功能函式 
 // =================================================================
 
 function switchScreen(screenToShow, isReset = false) {
@@ -377,7 +378,7 @@ function finalizeSelectionAndReveal() {
         };
     });
 
-    // Reveal UI: flip selected cards and remove non-selected ones
+    //  flip selected cards and remove non-selected ones
     const cardEls = cardDisplayArea.querySelectorAll('.card');
     // compute stagger delays
     const selList = Array.from(selectedIndexes);
@@ -462,7 +463,7 @@ function displayCards(cards) {
 }
 
 // =================================================================
-// 呼叫 AI 的函式 (已修改)
+// 呼叫 AI 的函式 
 // =================================================================
 
 /**
@@ -575,7 +576,7 @@ function chooseSpreadAutomatically(question) {
         return 'cross';
     }
 
-    // 備援：根據字數選擇（原本邏輯）
+    // 備援：根據字數選擇
     const len = question.trim().length;
     if (len < 10) return 'single';
     if (len < 25) return 'three-card';
@@ -583,7 +584,7 @@ function chooseSpreadAutomatically(question) {
 }
 
 // =================================================================
-// 輔助函式 (這部分不變)
+// 輔助函式 
 // =================================================================
 
 function buildPrompt(spread) {
@@ -649,7 +650,7 @@ function typewriterEffect(text, element) {
 }
 
 // =================================================================
-// 新增：詢問紀錄功能（localStorage）
+// 詢問紀錄功能（localStorage）
 // =================================================================
 function createPendingHistoryEntry(question) {
     try {
@@ -697,7 +698,7 @@ function finalizeHistoryEntry(id, payload = {}) {
     }
 }
 
-// 修改原有的 saveQuestionToHistory 保持相容（仍然可被其他地方呼叫），並回傳 id
+//  saveQuestionToHistory 保持相容（仍然可被其他地方呼叫），並回傳 id
 function saveQuestionToHistory(question) {
     try {
         const key = 'divinationHistory';
@@ -719,7 +720,7 @@ function saveQuestionToHistory(question) {
 }
 
 // =================================================================
-// 顯示歷史：加入「詳細」按鈕與展開動畫處理
+// 顯示歷史：「詳細」按鈕與展開動畫處理
 // =================================================================
 function showHistory() {
     const key = 'divinationHistory';
@@ -826,7 +827,7 @@ function renderDetailContent(item) {
 }
 
 // =================================================================
-// 新增：每日運勢功能（每天重置，使用 localStorage 快取）
+// 每日運勢功能（每天重置，使用 localStorage 快取）
 // =================================================================
 function showDailyHoroscope() {
     const todayKey = getTodayKey();
