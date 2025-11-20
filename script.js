@@ -226,7 +226,7 @@ function switchScreen(screenToShow, isReset = false) {
         screen.classList.remove('active');
     });
     if (isReset) {
-      divinationScreen.classList.remove('active');
+        divinationScreen.classList.remove('active');
     }
     screenToShow.classList.add('active');
 }
@@ -234,7 +234,7 @@ function switchScreen(screenToShow, isReset = false) {
 function handleSpreadSelection(spreadType) {
     let cardCount;
     let selectedSpread = spreadDetails[spreadType];
-    
+
     if (spreadType === 'free') {
         cardCount = parseInt(document.getElementById('free-draw-count').value);
         if (isNaN(cardCount) || cardCount < 1 || cardCount > 10) {
@@ -263,7 +263,7 @@ function handleSpreadSelection(spreadType) {
 
 function drawAndDisplayCards(spread) {
     const shuffledDeck = [...cardDeck].sort(() => 0.5 - Math.random());
-    
+
     drawnCards = shuffledDeck.slice(0, spread.count).map((card, index) => {
         const isReversed = Math.random() < 0.5;
         return {
@@ -285,6 +285,9 @@ function prepareSelectionDeck() {
     selectableDeck = [...cardDeck].map((c, i) => ({ ...c, _idx: i })).sort(() => 0.5 - Math.random());
     selectedIndexes = new Set();
     cardDisplayArea.innerHTML = '';
+    // Add selection mode class
+    cardDisplayArea.classList.add('selection-mode');
+
     interpretationArea.style.display = 'none';
     resetBtn.style.display = 'none';
     updateSelectionInstructions();
@@ -416,6 +419,9 @@ function finalizeSelectionAndReveal() {
     const maxRevealDelay = 200 + (selList.length - 1) * 250;
     const cleanupDelay = maxRevealDelay + 700;
     setTimeout(() => {
+        // Remove selection mode class to restore grid layout for result
+        cardDisplayArea.classList.remove('selection-mode');
+
         // Re-append only selected containers in the selected order
         const frag = document.createDocumentFragment();
         selList.forEach(selIdx => {
@@ -477,7 +483,7 @@ async function getAIInterpretation(spread) {
     resetBtn.style.display = 'none';
 
     const prompt = buildPrompt(spread);
-    
+
     try {
         const response = await fetch(`/.netlify/functions/get-interpretation`, {
             method: 'POST',
@@ -491,13 +497,13 @@ async function getAIInterpretation(spread) {
         }
 
         const data = await response.json();
-        
+
         if (!data.candidates || !data.candidates[0] || !data.candidates[0].content.parts[0].text) {
             throw new Error('從 AI 收到的回覆格式無效，請稍後再試。');
         }
-        
+
         const interpretationText = data.candidates[0].content.parts[0].text;
-        
+
         typewriterEffect(interpretationText, aiInterpretation);
 
         // 將 AI 回覆與當次抽牌結果寫回歷史（若有 currentHistoryId）
@@ -547,11 +553,11 @@ function chooseSpreadAutomatically(question) {
 
     const q = question.toLowerCase();
 
-    const relationshipKeywords = ['感情','戀愛','喜歡','對方','分手','曖昧','交往','伴侶','愛情','婚','追','愛','男友','男朋友','女友','女朋友','結婚','約會','關係','在一起'];
-    const timeKeywords = ['過去','現在','未來','將來','未來會'];
-    const decisionKeywords = ['選擇','決定','應該','要不要','是否','該不該','是不是','如何走','方向','阻礙','障礙','困難','改善'];
-    const workMoneyKeywords = ['工作','事業','職場','升遷','面試','收入','薪','錢','投資','財務','財運'];
-    const yesNoPatterns = ['是否','要不要','會不會','能不能','能否','有沒有'];
+    const relationshipKeywords = ['感情', '戀愛', '喜歡', '對方', '分手', '曖昧', '交往', '伴侶', '愛情', '婚', '追', '愛', '男友', '男朋友', '女友', '女朋友', '結婚', '約會', '關係', '在一起'];
+    const timeKeywords = ['過去', '現在', '未來', '將來', '未來會'];
+    const decisionKeywords = ['選擇', '決定', '應該', '要不要', '是否', '該不該', '是不是', '如何走', '方向', '阻礙', '障礙', '困難', '改善'];
+    const workMoneyKeywords = ['工作', '事業', '職場', '升遷', '面試', '收入', '薪', '錢', '投資', '財務', '財運'];
+    const yesNoPatterns = ['是否', '要不要', '會不會', '能不能', '能否', '有沒有'];
 
     // 檢查關鍵字出現次數（簡單 heuristic）
     function containsAny(list) {
@@ -588,7 +594,7 @@ function chooseSpreadAutomatically(question) {
 // =================================================================
 
 function buildPrompt(spread) {
-    let cardInfo = drawnCards.map(card => 
+    let cardInfo = drawnCards.map(card =>
         `- 牌位「${card.position}」: **${card.name} (${card.orientation})**\n  - 基本牌義: ${card.orientation === '正位' ? card.upright : card.reversed}`
     ).join('\n');
 
@@ -610,7 +616,7 @@ function buildPrompt(spread) {
 
         **2. 使用的牌陣：**
         **${spread.name}**
-        ${spread.positions.map((p, i) => `   - 位置 ${i+1}: ${p}`).join('\n')}
+        ${spread.positions.map((p, i) => `   - 位置 ${i + 1}: ${p}`).join('\n')}
 
         **3. 抽出的卡牌：**
         ${cardInfo}
@@ -636,11 +642,11 @@ function typewriterEffect(text, element) {
                     element.innerHTML += `<strong>${text.substring(i + 2, end)}</strong>`;
                     i = end + 1;
                 } else {
-                   element.innerHTML += char;
+                    element.innerHTML += char;
                 }
             }
             else {
-                 element.innerHTML += char;
+                element.innerHTML += char;
             }
             i++;
             setTimeout(type, 20); // 調整打字速度
@@ -801,148 +807,80 @@ function showHistory() {
 }
 
 function renderDetailContent(item) {
-    // 如果還沒完成，顯示等待訊息
-    if (!item || item.status === 'pending') {
-        return `<div style="padding:10px;color:rgba(255,255,255,0.8);">等待 AI 解讀完成，稍後會顯示詳情。</div>`;
+    if (item.status === 'pending') {
+        return '<p>等待 AI 解讀中...</p>';
     }
-    // 已有詳情：顯示牌陣、牌位、卡牌與 AI 回覆（簡單格式化）
-    let html = `<div style="font-weight:700;margin-bottom:8px;">牌陣：${escapeHtml(item.spread || '')}</div>`;
-    if (item.cards && Array.isArray(item.cards)) {
-        html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">`;
-        item.cards.forEach(c => {
-            html += `<div style="min-width:140px;padding:8px;border-radius:6px;background:rgba(0,0,0,0.06);">
-                <div style="font-weight:700;">${escapeHtml(c.name)}</div>
-                <div style="font-size:0.9em;color:var(--accent-color);">${escapeHtml(c.orientation)}</div>
-                <div style="font-size:0.85em;opacity:0.9;">${escapeHtml(c.position || '')}</div>
-                <div style="margin-top:6px;font-size:0.85em;">${escapeHtml(c.orientation === '正位' ? (c.upright || '') : (c.reversed || ''))}</div>
-            </div>`;
-        });
-        html += `</div>`;
+    if (!item.cards || item.cards.length === 0) {
+        return '<p>無卡牌資料</p>';
     }
+
+    let cardsHtml = '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;">';
+    item.cards.forEach(c => {
+        cardsHtml += `
+            <div style="min-width:140px;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px;text-align:center;">
+                <div style="font-weight:bold;color:#ff69b4;">${c.name}</div>
+                <div style="font-size:0.9em;opacity:0.8;">${c.orientation}</div>
+                <div style="font-size:0.8em;margin-top:5px;">${c.position}</div>
+            </div>
+        `;
+    });
+    cardsHtml += '</div>';
+
+    let aiHtml = '';
     if (item.aiText) {
-        // 將 AI 文字放入可展開的 pre 區塊
-        html += `<div style="white-space:pre-wrap;text-align:left;padding:10px;border-radius:6px;background:rgba(0,0,0,0.04);max-height:400px;overflow:auto;">${escapeHtml(item.aiText)}</div>`;
+        aiHtml = `<div style="margin-top:15px;white-space:pre-wrap;line-height:1.6;font-size:0.95em;">${item.aiText}</div>`;
     }
-    return html;
+
+    return cardsHtml + aiHtml;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // =================================================================
-// 每日運勢功能（每天重置，使用 localStorage 快取）
+// 每日運勢功能
 // =================================================================
 function showDailyHoroscope() {
-    const todayKey = getTodayKey();
-    const storageKey = `dailyHoroscope_${todayKey}`;
-    let data = null;
-    try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-            data = JSON.parse(raw);
-        } else {
-            data = generateDailyHoroscope(todayKey);
-            localStorage.setItem(storageKey, JSON.stringify(data));
-        }
-    } catch (e) {
-        console.error('讀取/產生每日運勢錯誤', e);
-        data = generateDailyHoroscope(todayKey);
-    }
-    renderDailyHoroscope(data);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const key = `dailyHoroscope_${today}`;
+    const saved = localStorage.getItem(key);
+
     dailyHoroscopeContainer.style.display = 'block';
-}
+    dailyHoroscopeContent.innerHTML = '<div class="loader"></div><p>正在抽取今日靈獸...</p>';
 
-function getTodayKey() {
-    const d = new Date();
-    // 使用 YYYY-MM-DD 作為 key，確保每天不同
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-}
-
-// 產生 deterministic 的每日運勢（同一天結果相同）
-function generateDailyHoroscope(seedStr) {
-    // categories 可以擴增
-    const categories = ['愛情', '財運', '事業/學業', '健康', '人際'];
-    // 建立 seeded random
-    const rnd = mulberry32(hashCode(seedStr + '_靈獸牌'));
-    const scores = {};
-    let total = 0;
-    categories.forEach(cat => {
-        // 分數 30 ~ 95
-        const s = Math.floor(30 + Math.floor(rnd() * 66));
-        scores[cat] = s;
-        total += s;
-    });
-    const overall = Math.round(total / categories.length);
-    // 產生每個分類的簡短建議
-    const details = categories.map(cat => {
-        return {
-            category: cat,
-            score: scores[cat],
-            short: scoreToAdvice(scores[cat], cat)
-        };
-    });
-
-    return {
-        date: seedStr,
-        overall,
-        details,
-        generatedAt: new Date().toISOString()
-    };
-}
-
-// 簡單 hash 與 seeded PRNG（輕量）
-function hashCode(str) {
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < str.length; i++) {
-        h ^= str.charCodeAt(i);
-        h = Math.imul(h, 16777619);
+    if (saved) {
+        renderDailyHoroscope(JSON.parse(saved));
+    } else {
+        // 抽一張牌
+        setTimeout(() => {
+            const randomCard = cardDeck[Math.floor(Math.random() * cardDeck.length)];
+            const isReversed = Math.random() < 0.5;
+            const result = {
+                card: randomCard,
+                orientation: isReversed ? '逆位' : '正位',
+                date: today
+            };
+            localStorage.setItem(key, JSON.stringify(result));
+            renderDailyHoroscope(result);
+        }, 1000);
     }
-    return h >>> 0;
-}
-function mulberry32(a) {
-    return function() {
-        let t = a += 0x6D2B79F5;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    }
-}
-
-function scoreToAdvice(score, category) {
-    if (score >= 85) return `非常好，${category}方面有明顯的正向能量，建議把握時機並主動出擊。`;
-    if (score >= 70) return `不錯，${category}方面較為順利，維持現在的步調，適度努力可見成效。`;
-    if (score >= 50) return `普通，${category}方面有起伏，注意細節並避免冒進。`;
-    if (score >= 35) return `偏弱，${category}方面可能遇到阻礙，建議保持耐心並尋求支援。`;
-    return `較差，${category}方面需要多留心與調整，建議先專注基礎且避免風險行為。`;
 }
 
 function renderDailyHoroscope(data) {
-    let html = `<div style="font-weight:700;font-size:1.1em;margin-bottom:8px;">日期：${data.date}　整體運勢：${data.overall}/100</div>`;
-    html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
-    data.details.forEach(d => {
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:6px;background:rgba(0,0,0,0.08);">
-            <div style="font-weight:600;">${d.category}</div>
-            <div style="text-align:right;">
-                <div style="font-weight:700;color:${scoreColor(d.score)}">${d.score}/100</div>
-                <div style="font-size:0.9em;opacity:0.9;margin-top:4px;">${d.short}</div>
-            </div>
-        </div>`;
-    });
-    html += `</div>`;
-    dailyHoroscopeContent.innerHTML = html;
-}
-
-function scoreColor(score) {
-    if (score >= 85) return '#4caf50';
-    if (score >= 70) return '#8bc34a';
-    if (score >= 50) return '#ffb300';
-    if (score >= 35) return '#ff7043';
-    return '#d32f2f';
-}
-
-// 防 XSS 簡單處理
-function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, function (s) {
-        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s];
-    });
+    const c = data.card;
+    const meaning = data.orientation === '正位' ? c.upright : c.reversed;
+    dailyHoroscopeContent.innerHTML = `
+        <div style="text-align:center;">
+            <h4 style="color:#ff69b4;font-size:1.5em;margin-bottom:10px;">${c.name} (${data.orientation})</h4>
+            <p style="font-size:1.1em;margin-bottom:20px;">${meaning}</p>
+            <p style="opacity:0.8;font-size:0.9em;">今日指引：保持覺知，靈獸與你同在。</p>
+        </div>
+    `;
 }

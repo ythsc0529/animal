@@ -40,8 +40,15 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* 標題與元件樣式 */
@@ -59,7 +66,8 @@ body {
     margin-bottom: 30px;
 }
 
-textarea, input[type="number"] {
+textarea,
+input[type="number"] {
     width: 80%;
     max-width: 500px;
     padding: 15px;
@@ -98,17 +106,20 @@ button:hover {
     justify-content: center;
     gap: 15px;
 }
+
 .spread-btn {
     min-width: 180px;
 }
+
 .free-draw-option {
     display: flex;
     align-items: center;
     gap: 10px;
-    background-color: rgba(255,255,255,0.05);
+    background-color: rgba(255, 255, 255, 0.05);
     padding: 5px 15px;
     border-radius: 50px;
 }
+
 input[type="number"] {
     width: 60px;
     text-align: center;
@@ -125,6 +136,50 @@ input[type="number"] {
     perspective: 1000px;
 }
 
+/* Selection Mode (Horizontal Scroll) */
+#card-display-area.selection-mode {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 40px 20px;
+    /* Add padding for hover lift */
+    gap: 0;
+    /* Overlap controlled by margin */
+    width: 100%;
+    box-sizing: border-box;
+    /* Hide scrollbar for cleaner look */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE 10+ */
+}
+
+#card-display-area.selection-mode::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari/Webkit */
+}
+
+#card-display-area.selection-mode .card-container {
+    flex: 0 0 auto;
+    margin-right: -60px;
+    /* Overlap amount */
+    transition: transform 0.3s ease, margin 0.3s ease, z-index 0s;
+}
+
+#card-display-area.selection-mode .card-container:hover {
+    transform: translateY(-30px) scale(1.1);
+    z-index: 100;
+    /* Bring to front */
+    margin-right: 10px;
+    /* Push neighbors away slightly */
+    margin-left: 10px;
+}
+
+/* Ensure the last card is reachable */
+#card-display-area.selection-mode .card-container:last-child {
+    margin-right: 20px;
+}
+
 /* 卡牌樣式與翻牌動畫 */
 .card-container {
     width: 120px;
@@ -133,6 +188,7 @@ input[type="number"] {
     transform: translateY(30px);
     animation: dealCard 0.5s forwards;
 }
+
 .card {
     width: 100%;
     height: 100%;
@@ -140,9 +196,11 @@ input[type="number"] {
     transform-style: preserve-3d;
     transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
 .card.flipped {
     transform: rotateY(180deg);
 }
+
 .card.reversed-draw {
     transform: rotateY(180deg) rotateZ(180deg);
 }
@@ -160,13 +218,14 @@ input[type="number"] {
     padding: 10px;
     box-sizing: border-box;
     text-align: center;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .card-back {
     background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
     border: 3px solid var(--primary-color);
 }
+
 .card-back::before {
     content: '靈';
     font-size: 3em;
@@ -230,12 +289,17 @@ input[type="number"] {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 #ai-interpretation {
-    background-color: rgba(0,0,0,0.2);
+    background-color: rgba(0, 0, 0, 0.2);
     border-radius: 10px;
     padding: 30px;
     text-align: left;
@@ -253,6 +317,7 @@ input[type="number"] {
     opacity: 0;
     transition: max-height 0.35s ease, opacity 0.35s ease;
 }
+
 .detail-panel.open {
     opacity: 1;
     /* max-height 由 JS 動態設定為內容高度，這裡放一個上限值保險 */
@@ -261,5 +326,5 @@ input[type="number"] {
 
 /* 歷史內的卡牌縮圖樣式（簡潔） */
 .detail-panel div[style*="min-width:140px"] {
-    border: 1px solid rgba(123,104,238,0.12);
+    border: 1px solid rgba(123, 104, 238, 0.12);
 }
